@@ -1,5 +1,25 @@
 ---
-title: "CropStress"
+title: "Crop Water Stress Prediction"
 format: html
 ---
 
+```{r}
+#| output: FALSE
+library(vroom)
+library(tidyverse)
+library(spmodel)   # splm (spatial linear models)
+library(viridis)   # colorblind friendly colors
+library(patchwork) # put graphs together
+library(FRK)       # (Fixed Rank Kriging) --> Spatial interpolation & modeling (big data)
+library(caret)     # trainControl for Cross-Validation
+```
+
+Read in the data:
+```{r}
+crop_na <- vroom("PotatoCWSI.csv", show_col_types = FALSE)
+
+crop <- crop_na |>
+  filter(!is.na(CWSI))
+
+head(crop)
+```
