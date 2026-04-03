@@ -54,6 +54,8 @@ spatial_df <- bind_cols(crop, spatial_features)
 head(spatial_df)
 ```
 
+# make our linear model
+
 ```{r}
 sf_names <- paste0("SF", 1:20)
 cwsi_all_SF <- as.formula(paste("CWSI ~ SLOPE + TWI + ASPECT + ECA_SHALLOW + NDVI + ", 
@@ -66,11 +68,36 @@ spatial_lm <- splm(formula = cwsi_all_SF,
                    ycoord = POINT_Y) 
 ```
 
+# compare to reduced models
+without spatial features
+```{r}
+reduced_lm <- splm(formula = CWSI ~ SLOPE + TWI + ASPECT + ECA_SHALLOW + NDVI,
+                   data = spatial_df,
+                   spcov_type = "exponential",
+                   xcoord = POINT_X, 
+                   ycoord = POINT_Y) 
+lmtest::lrtest(reduced_lm, spatial_lm)
+```
+without ASPECT + ECA_SHALLOW + NDVI
+```{r}
+cwsi_slope_twi_SF <- as.formula(paste("CWSI ~ SLOPE + TWI + ", 
+                             paste(sf_names, collapse = " + ")))
+
+reduced_lm2 <- splm(formula = cwsi_slope_twi_SF,
+                   data = spatial_df,
+                   spcov_type = "exponential",
+                   xcoord = POINT_X, 
+                   ycoord = POINT_Y) 
+lmtest::lrtest(reduced_lm2, spatial_lm)
+```
 
 ```{r}
 save(spatial_df, spatial_lm, file = "./potato.RData")
 ```
 
+```{r}
+
+```
 
 
 
