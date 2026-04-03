@@ -152,21 +152,21 @@ max_val <- max(c(pred_grid_results$fit, pred_grid_results$lwr, pred_grid_results
 shared_limits <- c(min_val, max_val)
 
 fitplot <- ggplot(pred_grid_results, aes(x = POINT_X, y = POINT_Y)) +
-  geom_point(aes(color = fit), size = 2) +
+  geom_point(aes(color = fit), size = 1) +
   scale_color_viridis_c(limits = shared_limits) + # Syncing here
-  labs(title = "Predicted CWSI (Fit)", x = "Longitude", y = "Latitude", color = "CWSI") +
+  labs(title = "Predicted CWSI (Fit)", x = "X coord", y = "Y coord", color = "CWSI") +
   theme_minimal()
 
 lwrplot <- ggplot(pred_grid_results, aes(x = POINT_X, y = POINT_Y)) +
-  geom_point(aes(color = lwr), size = 2) +
+  geom_point(aes(color = lwr), size = 1) +
   scale_color_viridis_c(limits = shared_limits) + # Syncing here
-  labs(title = "Lower 95% Bound", x = "Longitude", y = "Latitude", color = "CWSI") +
+  labs(title = "Lower 95% Bound", x = "X coord", y = "Y coord", color = "CWSI") +
   theme_minimal()
 
 uprplot <- ggplot(pred_grid_results, aes(x = POINT_X, y = POINT_Y)) +
-  geom_point(aes(color = upr), size = 2) +
+  geom_point(aes(color = upr), size = 1) +
   scale_color_viridis_c(limits = shared_limits) + # Syncing here
-  labs(title = "Upper 95% Bound", x = "Longitude", y = "Latitude", color = "CWSI") +
+  labs(title = "Upper 95% Bound", x = "X coord", y = "Y coord", color = "CWSI") +
   theme_minimal()
 
 (fitplot / (lwrplot + uprplot)) + 
