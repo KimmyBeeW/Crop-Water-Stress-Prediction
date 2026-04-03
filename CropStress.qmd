@@ -73,24 +73,28 @@ save(spatial_df, spatial_lm, file = "./potato.RData")
 
 Prediction
 ```{r}
-# predict at missing locations using your fitted model
-pred <- predict(spatial_lm, newdata = spatial_df, se.fit = TRUE)
+# predict at locations using fitted model
+pred_out <- predict(spatial_lm, newdata = spatial_df, se.fit = TRUE)
 
-# compute 95% prediction intervals
-ling_sf_miss <- ling_sf_miss %>%
+# extract predictions and standard errors
+spatial_df <- spatial_df %>%
   mutate(
-    lwr = pred - 1.96 * se,
-    upr = pred + 1.96 * se
+    pred = pred_out$fit,
+    se   = pred_out$se.fit,
+    lwr  = pred - 1.96 * se,
+    upr  = pred + 1.96 * se
   )
 
-# now the plotting works
-library(ggplot2)
-
-# Prediction plot
-p1 <- ggplot(ling_sf_miss, aes(x = long, y = lat)) +
+# Prediction plot 
+ggplot(spatial_df, aes(x = POINT_X, y = POINT_Y)) +
   geom_point(aes(color = pred), size = 2) +
   scale_color_viridis_c() +
-  labs(title = "Predicted Values", x = "Longitude", y = "Latitude", color = "Prediction") +
+  labs(
+    title = "Predicted Crop Water Stress Index (CWSI)",
+    x = "Longitude",
+    y = "Latitude",
+    color = "Prediction"
+  ) +
   theme_minimal()
 ```
 
