@@ -23,3 +23,74 @@ crop <- crop_na |>
 
 head(crop)
 ```
+
+```{r}
+croplonglat <- crop |> select(POINT_X, POINT_Y) 
+observed_loc_matrix <- as.matrix(croplonglat)
+
+## Number of Spatial Features
+K <- 20
+
+## "Centers" of Features
+centers <- fields::cover.design(observed_loc_matrix, nd=K)$design 
+
+## Use 1.5 rule of thumb for scale
+dist_between_centers <- fields::rdist(centers) # KxK matrix for distances
+the_scale <- 1.5*max(apply(dist_between_centers,1,function(x){sort(x)[2]})) # tau
+
+## Define spatial features
+spatial_features <- local_basis(
+  manifold=plane(),
+  loc=centers,
+  scale=rep(the_scale, K),
+  type="bisquare" #or "Gaussian" or "exp"
+  ) %>%
+  eval_basis(observed_loc_matrix) %>%
+  as.matrix()
+colnames(spatial_features) <- paste0("SF", 1:K) # name spatial features
+
+## Bind new spatial features in data frame
+spatial_df <- bind_cols(crop, spatial_features)
+head(spatial_df)
+```
+
+```{r}
+sf_names <- paste0("SF", 1:20)
+cwsi_all_SF <- as.formula(paste("CWSI ~ SLOPE + TWI + ASPECT + ECA_SHALLOW + NDVI + ", 
+                             paste(sf_names, collapse = " + ")))
+
+spatial_lm <- splm(formula = cwsi_all_SF,
+                   data = spatial_df,
+                   spcov_type = "exponential",
+                   xcoord = POINT_X, 
+                   ycoord = POINT_Y) 
+```
+
+
+```{r}
+save(spatial_df, spatial_lm, file = "./potato.RData")
+```
+
+Prediction
+```{r}
+# predict at missing locations using your fitted model
+pred <- predict(spatial_lm, newdata = spatial_df, se.fit = TRUE)
+
+# compute 95% prediction intervals
+ling_sf_miss <- ling_sf_miss %>%
+  mutate(
+    lwr = pred - 1.96 * se,
+    upr = pred + 1.96 * se
+  )
+
+# now the plotting works
+library(ggplot2)
+
+# Prediction plot
+p1 <- ggplot(ling_sf_miss, aes(x = long, y = lat)) +
+  geom_point(aes(color = pred), size = 2) +
+  scale_color_viridis_c() +
+  labs(title = "Predicted Values", x = "Longitude", y = "Latitude", color = "Prediction") +
+  theme_minimal()
+```
+

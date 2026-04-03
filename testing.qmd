@@ -1,0 +1,13 @@
+---
+title: "testing"
+format: html
+editor: visual
+---
+
+```{r}
+load("potato.RData")
+
+summary(spatial_lm)
+head(spatial_df)
+```
+
