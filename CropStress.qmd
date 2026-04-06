@@ -110,6 +110,113 @@ lmtest::lrtest(reduced_lm3, reduced_lm4)
 ```
 low p-val, but clear spatial structure
 
+# Line Assumptions
+```{r}
+decorr_resid <- rstandard(spatial_lm)
+fitted_vals <- fitted(spatial_lm, what = "mu")
+```
+
+```{r}
+# library(nlme)
+# # Fit a model that accounts for the spatial trend (e.g., Exponential)
+# spatial_gls <- gls(cwsi_all_SF, 
+#                    correlation = corExp(form = ~ POINT_X + POINT_Y, nugget = TRUE), 
+#                    data = spatial_df)
+# 
+# # To see if it worked, extract "normalized" residuals
+# # These are pre-multiplied by the inverse of the correlation matrix
+# decorr_resid <- residuals(spatial_gls, type = "normalized")
+# fitted_vals <- fitted(spatial_gls, what = "mu")
+```
+
+Independence
+```{r}
+sp1 <- spatial_df |>
+  mutate(resids = decorr_resid)
+sp1 |>
+  esv(formula=resids~1, xcoord=POINT_X, ycoord=POINT_Y) |>
+  plot()
+```
+Normality
+```{r}
+ks <- ks.test(decorr_resid, "pnorm", mean=0, sd=1)
+pval <- formatC(ks$p.value, digits = 4)
+
+hr <- ggplot(data.frame(resids = decorr_resid), aes(x = resids)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "orchid",
+                 alpha = 0.7, color = "orchid") +
+  stat_function(fun = dnorm, args = list(mean = mean(decorr_resid), 
+                                         sd = sd(decorr_resid)),
+                linewidth = 0.7, color = "darkred", linetype = "dashed") +
+  labs(title = paste0("Histogram of Decorrelated Residuals", 
+                      "\nKS test p-value: ", pval),
+       x = "Residuals",
+       y = "Density") +
+  theme_minimal()
+hr
+```
+Equal Variance
+```{r}
+bp_test <- lmtest::bptest(
+  decorr_resid ~ CWSI,
+  data = spatial_df
+)
+bp_pval <- formatC(bp_test$p.value, digits = 4)
+
+fr <- ggplot(data.frame(fitted = fitted_vals, resid = decorr_resid),
+       aes(x = fitted, y = resid)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(x = "Fitted Values",
+       y = "Residuals",
+       title = paste0("Fitted vs Decorrelated Residuals\n",
+                    "BP Test p-value: ", bp_pval)) +
+  theme_minimal()
+fr
+```
+
+
+# Cross Validation <-- for description section
+Measure of how well your model predicts (RMSE of like 0.3 or something)
+10 fold Cross Validation:
+```{r}
+n <- nrow(spatial_df)
+k <- 10
+
+folds <- sample(rep(1:k, length.out = n))
+
+rmse_vals <- numeric(k)
+
+for (i in 1:k) {
+  
+  # split data
+  train_data <- spatial_df[folds != i, ]
+  test_data  <- spatial_df[folds == i, ]
+  
+  # fit model on training
+  model_cv <- splm(
+    formula = cwsi_all_SF,
+    data = train_data,
+    spcov_type = "exponential",
+    xcoord = POINT_X,
+    ycoord = POINT_Y
+  )
+  
+  # predict on test
+  preds <- predict(model_cv, newdata = test_data)
+  
+  # compute RMSE
+  rmse_vals[i] <- sqrt(mean((test_data$CWSI - preds)^2))
+}
+
+# median RMSE
+median_rmse <- median(rmse_vals)
+median_rmse
+```
+
+
+
+
 
 # Predictions
 
@@ -126,7 +233,7 @@ pred_basis <- local_basis(
 
 colnames(pred_basis) <- paste0("SF", 1:K)
 
-# Combine the state info and the new spatial features
+# Combine the given info and the new spatial features
 pred_data_final <- bind_cols(pred_grid, as.data.frame(pred_basis))
 
 # Predict with Intervals --> returns a matrix with columns: fit, lwr, upr

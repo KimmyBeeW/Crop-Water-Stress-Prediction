@@ -1,19 +1,3 @@
-# Description
-
-# Dependencies
-`spmodel` for the spatial linear model
-
-`ggplot2` for the graph
-
-`viridis` colorblind friendly colors
-
-`patchwork` put graphs together
-
-
-# Objects
-
-# Usage
-```{r}
 # packages
 library(tidyverse)
 library(spmodel)   # splm (spatial linear models)
@@ -21,7 +5,7 @@ library(viridis)   # colorblind friendly colors
 library(patchwork) # put graphs together
 
 # data
-load("/potato.RData")
+load("P5_Crop_Stress/potato.RData")
 
 # Plots
 min_val <- min(c(pred_grid_results$fit, pred_grid_results$lwr, pred_grid_results$upr), na.rm = TRUE)
@@ -50,7 +34,4 @@ uprplot <- ggplot(pred_grid_results, aes(x = POINT_X, y = POINT_Y)) +
   plot_layout(heights = c(4, 2), guides = "collect")& 
   coord_fixed() & 
   theme(legend.position = "right")
-```
 
-# Output
-A graph with 3 distinct maps displaying the predicted, lower bound, and upper bound CWSI values. 
