@@ -39,7 +39,7 @@ library(viridis)   # colorblind friendly colors
 library(patchwork) # put graphs together
 
 # data
-load("P5_Crop_Stress/potato.RData")
+load("potato.RData")
 
 # Predictions
 preds <- predict(spatial_lm, newdata = pred_data_final, interval = "prediction", level = 0.95)
