@@ -8,24 +8,6 @@ library(patchwork) # put graphs together
 load("P5_Crop_Stress/potato.RData")
 
 # Predictions
-pred_grid <- crop_na %>% filter(is.na(CWSI)) # location of NA values to predict
-K <- 20 # number of spatial features
-
-# Prepare the spatial features for the NA locations
-pred_basis <- local_basis(
-  manifold = plane(), 
-  loc = centers, 
-  scale = rep(the_scale, K), 
-  type = "bisquare") %>%
-  eval_basis(as.matrix(pred_grid[, c("POINT_X", "POINT_Y")])) %>%
-  as.matrix()
-
-colnames(pred_basis) <- paste0("SF", 1:K)
-
-# Combine the given info and the new spatial features
-pred_data_final <- bind_cols(pred_grid, as.data.frame(pred_basis))
-
-# Predict with Intervals --> returns a matrix with columns: fit, lwr, upr
 preds <- predict(spatial_lm, newdata = pred_data_final, interval = "prediction", level = 0.95)
 
 # Attach back to our grid
