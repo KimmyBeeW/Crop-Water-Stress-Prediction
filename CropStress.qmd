@@ -54,6 +54,8 @@ spatial_df <- bind_cols(crop, spatial_features)
 head(spatial_df)
 ```
 
+# make our linear model
+
 ```{r}
 sf_names <- paste0("SF", 1:20)
 cwsi_all_SF <- as.formula(paste("CWSI ~ SLOPE + TWI + ASPECT + ECA_SHALLOW + NDVI + ", 
@@ -66,35 +68,147 @@ spatial_lm <- splm(formula = cwsi_all_SF,
                    ycoord = POINT_Y) 
 ```
 
-
+# compare to reduced models
+without spatial features
 ```{r}
-save(spatial_df, spatial_lm, file = "./potato.RData")
+reduced_lm <- splm(formula = CWSI ~ SLOPE + TWI + ASPECT + ECA_SHALLOW + NDVI,
+                   data = spatial_df,
+                   spcov_type = "exponential",
+                   xcoord = POINT_X, 
+                   ycoord = POINT_Y) 
+lmtest::lrtest(reduced_lm, spatial_lm)
+```
+without ASPECT + ECA_SHALLOW + NDVI
+```{r}
+cwsi_slope_twi_SF <- as.formula(paste("CWSI ~ SLOPE + TWI + ", 
+                             paste(sf_names, collapse = " + ")))
+
+reduced_lm2 <- splm(formula = cwsi_slope_twi_SF,
+                   data = spatial_df,
+                   spcov_type = "exponential",
+                   xcoord = POINT_X, 
+                   ycoord = POINT_Y) 
+lmtest::lrtest(reduced_lm2, spatial_lm)
 ```
 
-Prediction
 ```{r}
-# predict at locations using fitted model
-pred_out <- predict(spatial_lm, newdata = spatial_df, se.fit = TRUE)
+reduced_lm3 <- splm(formula = CWSI ~ 1,
+                   data = spatial_df,
+                   spcov_type = "exponential",
+                   xcoord = POINT_X, 
+                   ycoord = POINT_Y) 
 
-# extract predictions and standard errors
-spatial_df <- spatial_df %>%
+just_SF <- as.formula(paste("CWSI ~ ", 
+                             paste(sf_names, collapse = " + ")))
+reduced_lm4 <- splm(formula = just_SF,
+                   data = spatial_df,
+                   spcov_type = "exponential",
+                   xcoord = POINT_X, 
+                   ycoord = POINT_Y) 
+
+lmtest::lrtest(reduced_lm3, reduced_lm4)
+```
+low p-val, but clear spatial structure
+
+
+# Predictions
+
+```{r}
+pred_grid <- crop_na %>% filter(is.na(CWSI))
+# Prepare the spatial features for the NA locations
+pred_basis <- local_basis(
+  manifold = plane(), 
+  loc = centers, 
+  scale = rep(the_scale, K), 
+  type = "bisquare") %>%
+  eval_basis(as.matrix(pred_grid[, c("POINT_X", "POINT_Y")])) %>%
+  as.matrix()
+
+colnames(pred_basis) <- paste0("SF", 1:K)
+
+# Combine the state info and the new spatial features
+pred_data_final <- bind_cols(pred_grid, as.data.frame(pred_basis))
+
+# Predict with Intervals --> returns a matrix with columns: fit, lwr, upr
+preds <- predict(spatial_lm, newdata = pred_data_final, interval = "prediction", level = 0.95)
+
+# Attach back to our grid
+pred_grid_results <- pred_data_final %>%
   mutate(
-    pred = pred_out$fit,
-    se   = pred_out$se.fit,
-    lwr  = pred - 1.96 * se,
-    upr  = pred + 1.96 * se
+    fit = preds[,1],
+    lwr = preds[,2],
+    upr = preds[,3]
   )
-
-# Prediction plot 
-ggplot(spatial_df, aes(x = POINT_X, y = POINT_Y)) +
-  geom_point(aes(color = pred), size = 2) +
-  scale_color_viridis_c() +
-  labs(
-    title = "Predicted Crop Water Stress Index (CWSI)",
-    x = "Longitude",
-    y = "Latitude",
-    color = "Prediction"
-  ) +
-  theme_minimal()
 ```
+
+```{r}
+save(spatial_df, spatial_lm, pred_grid_results, file = "./potato.RData")
+```
+
+```{r}
+# shared scale
+min_val <- min(c(pred_grid_results$fit, pred_grid_results$lwr, pred_grid_results$upr), na.rm = TRUE)
+max_val <- max(c(pred_grid_results$fit, pred_grid_results$lwr, pred_grid_results$upr), na.rm = TRUE)
+shared_limits <- c(min_val, max_val)
+
+fitplot <- ggplot(pred_grid_results, aes(x = POINT_X, y = POINT_Y)) +
+  geom_point(aes(color = fit), size = 1) +
+  scale_color_viridis_c(limits = shared_limits) + # Syncing here
+  labs(title = "Predicted CWSI (Fit)", x = "X coord", y = "Y coord", color = "CWSI") +
+  theme_minimal()
+
+lwrplot <- ggplot(pred_grid_results, aes(x = POINT_X, y = POINT_Y)) +
+  geom_point(aes(color = lwr), size = 1) +
+  scale_color_viridis_c(limits = shared_limits) + # Syncing here
+  labs(title = "Lower 95% Bound", x = "X coord", y = "Y coord", color = "CWSI") +
+  theme_minimal()
+
+uprplot <- ggplot(pred_grid_results, aes(x = POINT_X, y = POINT_Y)) +
+  geom_point(aes(color = upr), size = 1) +
+  scale_color_viridis_c(limits = shared_limits) + # Syncing here
+  labs(title = "Upper 95% Bound", x = "X coord", y = "Y coord", color = "CWSI") +
+  theme_minimal()
+
+(fitplot / (lwrplot + uprplot)) + 
+  plot_layout(heights = c(4, 2), guides = "collect")& 
+  coord_fixed() & 
+  theme(legend.position = "right")
+```
+
+10 fold Cross Validation
+```{r}
+n <- nrow(spatial_df)
+k <- 10
+
+folds <- sample(rep(1:k, length.out = n))
+
+rmse_vals <- numeric(k)
+
+for (i in 1:k) {
+  
+  # split data
+  train_data <- spatial_df[folds != i, ]
+  test_data  <- spatial_df[folds == i, ]
+  
+  # fit model on training
+  model_cv <- splm(
+    formula = cwsi_all_SF,
+    data = train_data,
+    spcov_type = "exponential",
+    xcoord = POINT_X,
+    ycoord = POINT_Y
+  )
+  
+  # predict on test
+  preds <- predict(model_cv, newdata = test_data)
+  
+  # compute RMSE
+  rmse_vals[i] <- sqrt(mean((test_data$CWSI - preds)^2))
+}
+
+# median RMSE
+median_rmse <- median(rmse_vals)
+median_rmse
+```
+
 
