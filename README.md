@@ -4,6 +4,8 @@ Our trained model is a spatial linear model with 20 spatial features and various
 Model performance was evaluated using 10 fold cross validation, and the median root mean squared error (RMSE) was  0.35. When compared to the standard deviation of CWSI (0.6) we can see a significant reduction in uncertainty (our model removes roughly 40% of the uncertainty compared to a blind guess). This indicates that the spatial linear model does a good job at predicting.
 
 # Dependencies
+`fields` to make centers for spatial features
+
 `spmodel` for the spatial linear model
 
 `ggplot2` for the graph
@@ -29,13 +31,42 @@ Model performance was evaluated using 10 fold cross validation, and the median r
 # Usage
 ```{r}
 # packages
-library(tidyverse)
+library(ggplot2)
 library(spmodel)   # splm (spatial linear models)
 library(viridis)   # colorblind friendly colors
 library(patchwork) # put graphs together
 
 # data
-load("/potato.RData")
+load("P5_Crop_Stress/potato.RData")
+
+## Predictions
+pred_grid <- crop_na %>% filter(is.na(CWSI)) # location of NA values to predict
+K <- 20 # number of spatial features
+
+# Prepare the spatial features for the NA locations
+pred_basis <- local_basis(
+  manifold = plane(), 
+  loc = centers, 
+  scale = rep(the_scale, K), 
+  type = "bisquare") %>%
+  eval_basis(as.matrix(pred_grid[, c("POINT_X", "POINT_Y")])) %>%
+  as.matrix()
+
+colnames(pred_basis) <- paste0("SF", 1:K)
+
+# Combine the given info and the new spatial features
+pred_data_final <- bind_cols(pred_grid, as.data.frame(pred_basis))
+
+# Predict with Intervals --> returns a matrix with columns: fit, lwr, upr
+preds <- predict(spatial_lm, newdata = pred_data_final, interval = "prediction", level = 0.95)
+
+# Attach back to our grid
+pred_grid_results <- pred_data_final %>%
+  mutate(
+    fit = preds[,1],
+    lwr = preds[,2],
+    upr = preds[,3]
+  )
 
 # Plots
 min_val <- min(c(pred_grid_results$fit, pred_grid_results$lwr, pred_grid_results$upr), na.rm = TRUE)

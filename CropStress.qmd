@@ -175,6 +175,10 @@ fr <- ggplot(data.frame(fitted = fitted_vals, resid = decorr_resid),
 fr
 ```
 
+# Save model
+```{r}
+save(crop_na, spatial_df, spatial_lm, centers, the_scale, file = "./potato.RData")
+```
 
 # Cross Validation <-- for description section
 Measure of how well your model predicts (RMSE of like 0.3 or something)
@@ -249,10 +253,6 @@ pred_grid_results <- pred_data_final %>%
     lwr = preds[,2],
     upr = preds[,3]
   )
-```
-
-```{r}
-save(spatial_df, spatial_lm, pred_grid_results, file = "./potato.RData")
 ```
 
 ```{r}
