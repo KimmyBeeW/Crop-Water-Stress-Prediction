@@ -1,7 +1,9 @@
 # Description
-Our trained model is a spatial linear model with 20 spatial features and various other predictor variables to predict crop water stress index (CWSI). Compared to models without the spatial features using lrtest there was a significant difference.
+Our trained model is a spatial linear model with 20 spatial features and various other predictor variables to predict crop water stress index (CWSI). The spatial features were constructed using bisquare basis functions to capture the spatial trends. The spatial linear model then took these features and used an exponential spatial covariance structure to account for residual correlation between nearby points. The model is shown below:
 
-Model performance was evaluated using 10 fold cross validation, and the median root mean squared error (RMSE) was  0.35. When compared to the standard deviation of CWSI (0.6) we can see a significant reduction in uncertainty (our model removes roughly 40% of the uncertainty compared to a blind guess). This indicates that the spatial linear model does a good job at predicting.
+CWSI ~ SLOPE + TWI + ASPECT + ECA_SHALLOW + NDVI + SF1 + SF2 + SF3 + SF4 + SF5 + SF6 + SF7 + SF8 + SF9 + SF10 + SF11 + SF12 + SF13 + SF14 + SF15 + SF16 + SF17 + SF18 + SF19 + SF20
+
+Compared to models without the spatial features using lrtest there was a significant difference. Model performance was evaluated using 10 fold cross validation, and the median root mean squared error (RMSE) was  0.35. When compared to the standard deviation of CWSI (0.6) we can see a significant reduction in uncertainty (our model removes roughly 40% of the uncertainty compared to a blind guess). This indicates that the spatial linear model does a good job at predicting.
 
 # Dependencies
 `fields` to make centers for spatial features
@@ -80,4 +82,4 @@ uprplot <- ggplot(pred_grid_results, aes(x = POINT_X, y = POINT_Y)) +
 ```
 
 # Output
-A graph with 3 distinct maps displaying the predicted, lower bound, and upper bound CWSI values. 
+The code snippet takes our pred_data_final to create predictions for the empty CWSI locations. We then make model based predictions. This allows us to find the point estimates (fit) and 95% prediction interval (lwr, upr) by generating the predictions from spatial_lm. The output from generating these predictions is a graph with 3 distinct maps displaying the predicted, lower bound, and upper bound CWSI values.
