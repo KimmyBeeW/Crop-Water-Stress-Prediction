@@ -1,4 +1,7 @@
 # Description
+Our trained model is a spatial linear model with 20 spatial features and various other predictor variables to predict crop water stress index (CWSI). Compared to models without the spatial features using lrtest there was a significant difference.
+
+Model performance was evaluated using 10 fold cross validation, and the median root mean squared error (RMSE) was  0.35. When compared to the standard deviation of CWSI (0.6) we can see a significant reduction in uncertainty (our model removes roughly 40% of the uncertainty compared to a blind guess). This indicates that the spatial linear model does a good job at predicting.
 
 # Dependencies
 `spmodel` for the spatial linear model
@@ -11,6 +14,17 @@
 
 
 # Objects
+`spatial_df`
+- **Description** - From the crop data, we added 20 spatial features (SF1 - SF20), constructed from the spatial coordinates POINT_X and POINT_Y, to the data frame. The other variables included with the spatial features in the data frame include CWSI, SLOPE, TWI, ASPECT, ECA_SHALLOW, and NDVI. We used spatial_df to help us later fit our spatial regression model.
+- **Class** - tibble (data frame)
+
+`spatial_lm`
+- **Description** - We fit a spatial linear model (splm) using spatial_df. CWSI is the response variable, and the other variables in spatial_df are the predictors for the model. 
+- **Class** - splm
+
+`pred_grid_results`
+- **Description** - pred_grid_results is a data frame containing prediction results at locations where CWSI is NA. It includes the original covariates, constructed spatial features, and model based predictions. This allows us to find the point estimates (fit) and 95% prediction interval (lwr, upr) by generating the predictions from spatial_lm. 
+- **Class** - tibble (data frame)
 
 # Usage
 ```{r}
