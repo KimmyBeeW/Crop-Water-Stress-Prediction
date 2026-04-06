@@ -214,6 +214,9 @@ median_rmse <- median(rmse_vals)
 median_rmse
 ```
 
+```{r}
+sd(crop$CWSI)
+```
 
 
 
